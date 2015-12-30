@@ -89,10 +89,10 @@ impl<R: Read> Reader<R> {
             0xef => Ok(Token::End),
 
             0x00 ... 0x08 | 0xee =>
-                self.read_value(buffer[0]).map(|v| Token::Value(v)),
+                self.read_value(buffer[0]).map(Token::Value),
 
             0x80 ... 0x86 =>
-                self.read_array(buffer[0]).map(|v| Token::Value(v)),
+                self.read_array(buffer[0]).map(Token::Value),
 
             _ => invalid_token(),
         }
@@ -100,16 +100,16 @@ impl<R: Read> Reader<R> {
 
     fn read_value(&mut self, t: u8) -> io::Result<Value> {
         match t {
-            0x00 => self.read_bool().map(|v| Value::Bool(v)),
-            0x01 => self.read_int().map(|v| Value::Int(v)),
-            0x02 => self.read_double().map(|v| Value::Double(v)),
-            0x03 => self.read_vec2().map(|v| Value::Vec2(v)),
-            0x04 => self.read_vec3().map(|v| Value::Vec3(v)),
-            0x05 => self.read_vec4().map(|v| Value::Vec4(v)),
-            0x06 => self.read_box2().map(|v| Value::Box2(v)),
-            0x07 => self.read_string().map(|v| Value::String(v)),
-            0x08 => self.read_blob().map(|v| Value::Blob(v)),
-            0xee => self.read_tag().map(|v| Value::Tag(v)),
+            0x00 => self.read_bool().map(Value::Bool),
+            0x01 => self.read_int().map(Value::Int),
+            0x02 => self.read_double().map(Value::Double),
+            0x03 => self.read_vec2().map(Value::Vec2),
+            0x04 => self.read_vec3().map(Value::Vec3),
+            0x05 => self.read_vec4().map(Value::Vec4),
+            0x06 => self.read_box2().map(Value::Box2),
+            0x07 => self.read_string().map(Value::String),
+            0x08 => self.read_blob().map(Value::Blob),
+            0xee => self.read_tag().map(Value::Tag),
             _ => invalid_token(),
         }
     }
@@ -117,19 +117,19 @@ impl<R: Read> Reader<R> {
     fn read_array(&mut self, t:u8) -> io::Result<Value> {
         match t {
             0x80 => self.read_array_values(Reader::read_bool)
-                .map(|v| Value::BoolArray(v)),
+                .map(Value::BoolArray),
             0x81 => self.read_array_values(Reader::read_int)
-                .map(|v| Value::IntArray(v)),
+                .map(Value::IntArray),
             0x82 => self.read_array_values(Reader::read_double)
-                .map(|v| Value::DoubleArray(v)),
+                .map(Value::DoubleArray),
             0x83 => self.read_array_values(Reader::read_vec2)
-                .map(|v| Value::Vec2Array(v)),
+                .map(Value::Vec2Array),
             0x84 => self.read_array_values(Reader::read_vec3)
-                .map(|v| Value::Vec3Array(v)),
+                .map(Value::Vec3Array),
             0x85 => self.read_array_values(Reader::read_vec4)
-                .map(|v| Value::Vec4Array(v)),
+                .map(Value::Vec4Array),
             0x86 => self.read_array_values(Reader::read_box2)
-                .map(|v| Value::Box2Array(v)),
+                .map(Value::Box2Array),
             _ => invalid_token(),
         }
     }
