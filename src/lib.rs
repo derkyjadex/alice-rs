@@ -10,31 +10,31 @@ pub type Vec4 = (f64, f64, f64, f64);
 pub type Box2 = (Vec2, Vec2);
 
 #[derive(PartialEq, Debug)]
-pub enum Value<'a> {
+pub enum Value {
     Tag(Tag),
     Bool(bool),
-    BoolArray(&'a [bool]),
+    BoolArray(Box<[bool]>),
     Int(i32),
-    IntArray(&'a [i32]),
+    IntArray(Box<[i32]>),
     Double(f64),
-    DoubleArray(&'a [f64]),
+    DoubleArray(Box<[f64]>),
     Vec2(Vec2),
-    Vec2Array(&'a [Vec2]),
+    Vec2Array(Box<[Vec2]>),
     Vec3(Vec3),
-    Vec3Array(&'a [Vec3]),
+    Vec3Array(Box<[Vec3]>),
     Vec4(Vec4),
-    Vec4Array(&'a [Vec4]),
+    Vec4Array(Box<[Vec4]>),
     Box2(Box2),
-    Box2Array(&'a [Box2]),
+    Box2Array(Box<[Box2]>),
     String(Box<str>),
     Blob(Box<[u8]>)
 }
 
 #[derive(PartialEq, Debug)]
-pub enum Token<'a> {
+pub enum Token {
     Start,
     End,
-    Value(Value<'a>),
+    Value(Value),
     EndOfFile
 }
 
@@ -90,6 +90,10 @@ impl<R: Read> Reader<R> {
 
             0x00 ... 0x08 | 0xee =>
                 self.read_value(buffer[0]).map(|v| Token::Value(v)),
+
+            0x80 ... 0x86 =>
+                self.read_array(buffer[0]).map(|v| Token::Value(v)),
+
             _ => invalid_token(),
         }
     }
@@ -106,6 +110,26 @@ impl<R: Read> Reader<R> {
             0x07 => self.read_string().map(|v| Value::String(v)),
             0x08 => self.read_blob().map(|v| Value::Blob(v)),
             0xee => self.read_tag().map(|v| Value::Tag(v)),
+            _ => invalid_token(),
+        }
+    }
+
+    fn read_array(&mut self, t:u8) -> io::Result<Value> {
+        match t {
+            0x80 => self.read_array_values(Reader::read_bool)
+                .map(|v| Value::BoolArray(v)),
+            0x81 => self.read_array_values(Reader::read_int)
+                .map(|v| Value::IntArray(v)),
+            0x82 => self.read_array_values(Reader::read_double)
+                .map(|v| Value::DoubleArray(v)),
+            0x83 => self.read_array_values(Reader::read_vec2)
+                .map(|v| Value::Vec2Array(v)),
+            0x84 => self.read_array_values(Reader::read_vec3)
+                .map(|v| Value::Vec3Array(v)),
+            0x85 => self.read_array_values(Reader::read_vec4)
+                .map(|v| Value::Vec4Array(v)),
+            0x86 => self.read_array_values(Reader::read_box2)
+                .map(|v| Value::Box2Array(v)),
             _ => invalid_token(),
         }
     }
@@ -216,6 +240,19 @@ impl<R: Read> Reader<R> {
 
         Ok(buffer.into_boxed_slice())
     }
+
+    fn read_array_values<F, T>(&mut self, f: F) -> io::Result<Box<[T]>>
+        where F: Fn(&mut Self) -> io::Result<T> {
+
+        let length = try!(self.read_uint()) as usize;
+        let mut result = Vec::with_capacity(length);
+        for _ in 0..length {
+            let v = try!(f(self));
+            result.push(v);
+        }
+
+        Ok(result.into_boxed_slice())
+    }
 }
 
 #[cfg(test)]
@@ -236,7 +273,6 @@ mod tests {
     }
 
     fn is_value(result: io::Result<Token>, expected: Value) -> bool {
-        println!("{:?}", result);
         is_token(result, Token::Value(expected))
     }
 
@@ -391,6 +427,97 @@ mod tests {
             0x6D, 0x20, 0x61, 0x64, 0x20, 0x6D, 0x69, 0x6E, 0x69, 0x6D,
             0x20, 0x76, 0x65, 0x6E, 0x69, 0x61, 0x6D,
         ]));
+        assert!(is_token(reader.read_next(), Token::EndOfFile));
+    }
+
+    #[test]
+    fn arrays() {
+        let mut reader = setup(vec![
+            0x80, 0x00,
+            0x80, 0x03,
+                0x01, 0x00, 0x01,
+
+            0x81, 0x00,
+            0x81, 0x03,
+                0x0c, 0x80, 0x02, 0xd0, 0x0f,
+
+            0x82, 0x00,
+            0x82, 0x03,
+                0x00, 0x00, 0x00, 0x00, 0xd6, 0x6a, 0xf0, 0x40,
+                0x33, 0x33, 0x33, 0x33, 0xb3, 0x11, 0xab, 0x40,
+                0x50, 0x8d, 0x97, 0x6e, 0xba, 0x20, 0xc1, 0xc0,
+
+            0x83, 0x00,
+            0x83, 0x02,
+                0x00, 0x00, 0x00, 0x00, 0xd6, 0x6a, 0xf0, 0x40,
+                0x33, 0x33, 0x33, 0x33, 0xb3, 0x11, 0xab, 0x40,
+                0x50, 0x8d, 0x97, 0x6e, 0xba, 0x20, 0xc1, 0xc0,
+                0xae, 0x47, 0xe1, 0x7a, 0x14, 0x6a, 0x9d, 0xc0,
+
+            0x84, 0x00,
+            0x84, 0x02,
+                0x00, 0x00, 0x00, 0x00, 0xd6, 0x6a, 0xf0, 0x40,
+                0x33, 0x33, 0x33, 0x33, 0xb3, 0x11, 0xab, 0x40,
+                0x50, 0x8d, 0x97, 0x6e, 0xba, 0x20, 0xc1, 0xc0,
+                0xae, 0x47, 0xe1, 0x7a, 0x14, 0x6a, 0x9d, 0xc0,
+                0x00, 0x00, 0x00, 0x00, 0xd6, 0x6a, 0xf0, 0x40,
+                0x33, 0x33, 0x33, 0x33, 0xb3, 0x11, 0xab, 0x40,
+
+            0x85, 0x00,
+            0x85, 0x02,
+                0x00, 0x00, 0x00, 0x00, 0xd6, 0x6a, 0xf0, 0x40,
+                0x33, 0x33, 0x33, 0x33, 0xb3, 0x11, 0xab, 0x40,
+                0x50, 0x8d, 0x97, 0x6e, 0xba, 0x20, 0xc1, 0xc0,
+                0xae, 0x47, 0xe1, 0x7a, 0x14, 0x6a, 0x9d, 0xc0,
+                0xae, 0x47, 0xe1, 0x7a, 0x14, 0x6a, 0x9d, 0xc0,
+                0x50, 0x8d, 0x97, 0x6e, 0xba, 0x20, 0xc1, 0xc0,
+                0x33, 0x33, 0x33, 0x33, 0xb3, 0x11, 0xab, 0x40,
+                0x00, 0x00, 0x00, 0x00, 0xd6, 0x6a, 0xf0, 0x40,
+
+            0x86, 0x00,
+            0x86, 0x02,
+                0x00, 0x00, 0x00, 0x00, 0xd6, 0x6a, 0xf0, 0x40,
+                0x33, 0x33, 0x33, 0x33, 0xb3, 0x11, 0xab, 0x40,
+                0x50, 0x8d, 0x97, 0x6e, 0xba, 0x20, 0xc1, 0xc0,
+                0xae, 0x47, 0xe1, 0x7a, 0x14, 0x6a, 0x9d, 0xc0,
+                0xae, 0x47, 0xe1, 0x7a, 0x14, 0x6a, 0x9d, 0xc0,
+                0x50, 0x8d, 0x97, 0x6e, 0xba, 0x20, 0xc1, 0xc0,
+                0x33, 0x33, 0x33, 0x33, 0xb3, 0x11, 0xab, 0x40,
+                0x00, 0x00, 0x00, 0x00, 0xd6, 0x6a, 0xf0, 0x40,
+        ]);
+
+        assert!(is_value(reader.read_next(), Value::BoolArray(vec![].into_boxed_slice())));
+        assert!(is_value(reader.read_next(), Value::BoolArray(vec![
+            true, false, true
+        ].into_boxed_slice())));
+        assert!(is_value(reader.read_next(), Value::IntArray(vec![].into_boxed_slice())));
+        assert!(is_value(reader.read_next(), Value::IntArray(vec![
+            6, 128, 1000
+        ].into_boxed_slice())));
+        assert!(is_value(reader.read_next(), Value::DoubleArray(vec![].into_boxed_slice())));
+        assert!(is_value(reader.read_next(), Value::DoubleArray(vec![
+            67245.375, 3464.85, -8769.4565
+        ].into_boxed_slice())));
+        assert!(is_value(reader.read_next(), Value::Vec2Array(vec![].into_boxed_slice())));
+        assert!(is_value(reader.read_next(), Value::Vec2Array(vec![
+            (67245.375, 3464.85),
+            (-8769.4565, -1882.52)
+        ].into_boxed_slice())));
+        assert!(is_value(reader.read_next(), Value::Vec3Array(vec![].into_boxed_slice())));
+        assert!(is_value(reader.read_next(), Value::Vec3Array(vec![
+            (67245.375, 3464.85, -8769.4565),
+            (-1882.52, 67245.375, 3464.85),
+        ].into_boxed_slice())));
+        assert!(is_value(reader.read_next(), Value::Vec4Array(vec![].into_boxed_slice())));
+        assert!(is_value(reader.read_next(), Value::Vec4Array(vec![
+            (67245.375, 3464.85, -8769.4565, -1882.52),
+            (-1882.52, -8769.4565, 3464.85, 67245.375),
+        ].into_boxed_slice())));
+        assert!(is_value(reader.read_next(), Value::Box2Array(vec![].into_boxed_slice())));
+        assert!(is_value(reader.read_next(), Value::Box2Array(vec![
+            ((67245.375, 3464.85), (-8769.4565, -1882.52)),
+            ((-1882.52, -8769.4565), (3464.85, 67245.375)),
+        ].into_boxed_slice())));
         assert!(is_token(reader.read_next(), Token::EndOfFile));
     }
 }
