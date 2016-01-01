@@ -215,31 +215,30 @@ impl<R: Read> Reader<R> {
     }
 
     fn read_vec2(&mut self) -> io::Result<Vec2> {
-        self.read_double()
-            .and_then(|x| self.read_double()
-                      .map(|y| (x, y)))
+        let x = try!(self.read_double());
+        let y = try!(self.read_double());
+        Ok((x, y))
     }
 
     fn read_vec3(&mut self) -> io::Result<Vec3> {
-        self.read_double()
-            .and_then(|x| self.read_double()
-                      .and_then(|y| self.read_double()
-                                .map(|z| (x, y, z))))
+        let x = try!(self.read_double());
+        let y = try!(self.read_double());
+        let z = try!(self.read_double());
+        Ok((x, y, z))
     }
 
     fn read_vec4(&mut self) -> io::Result<Vec4> {
-        self.read_double()
-            .and_then(|x| self.read_double()
-                      .and_then(|y| self.read_double()
-                                .and_then(|z| self.read_double()
-                                          .map(|w| (x, y, z, w)))))
+        let x = try!(self.read_double());
+        let y = try!(self.read_double());
+        let z = try!(self.read_double());
+        let w = try!(self.read_double());
+        Ok((x, y, z, w))
     }
 
     fn read_box2(&mut self) -> io::Result<Box2> {
-        self.read_vec2()
-            .and_then(|min|
-                      self.read_vec2()
-                      .map(|max| (min, max)))
+        let min = try!(self.read_vec2());
+        let max = try!(self.read_vec2());
+        Ok((min, max))
     }
 
     fn read_string(&mut self) -> io::Result<Box<str>> {
