@@ -27,14 +27,6 @@ pub enum Value {
     Blob(Box<[u8]>)
 }
 
-#[derive(PartialEq, Debug)]
-pub enum Token {
-    Start,
-    End,
-    Value(Value),
-    EndOfFile
-}
-
 #[macro_use]
 pub mod macros;
 mod reader;

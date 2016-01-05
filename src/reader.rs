@@ -4,6 +4,14 @@ use super::*;
 
 use utils::{map_to_io};
 
+#[derive(PartialEq, Debug)]
+pub enum Token {
+    Start,
+    End,
+    Value(Value),
+    EndOfFile
+}
+
 pub struct Reader<R> {
     input: R
 }
@@ -215,7 +223,7 @@ impl<R: Read> Reader<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::super::{Value, Token};
+    use super::super::Value;
     use std::io::{self, Cursor};
 
     fn setup(data: Vec<u8>) -> Reader<Cursor<Vec<u8>>> {
