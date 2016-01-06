@@ -31,7 +31,9 @@ pub enum Value {
 pub mod macros;
 mod reader;
 mod writer;
+mod text_writer;
 mod utils;
 
 pub use writer::Writer;
 pub use reader::Reader;
+pub use text_writer::TextWriter;
