@@ -20,6 +20,10 @@ fn invalid_token<T>() -> io::Result<T> {
     Err(io::Error::new(io::ErrorKind::Other, "Invalid token"))
 }
 
+fn unexpected<T>(msg: &str) -> io::Result<T> {
+    Err(io::Error::new(io::ErrorKind::Other, msg))
+}
+
 impl<R: Read> Reader<R> {
     pub fn new(input: R) -> Reader<R> {
         Reader { input: input }
@@ -228,12 +232,146 @@ impl<R: Read> Reader<R> {
                 Token::End if levels == 0 => break,
                 Token::End => levels -= 1,
                 Token::EndOfFile if levels == 0 => break,
-                Token::EndOfFile =>
-                    return Err(io::Error::new(io::ErrorKind::Other, "Unexpected end of file"))
+                Token::EndOfFile => return unexpected("Unexpected end of file")
             }
         }
 
         Ok(())
+    }
+
+    pub fn expect_start(&mut self) -> io::Result<()> {
+        match try!(self.read_next()) {
+            Token::Start => Ok(()),
+            _ => unexpected("Expected start of group")
+        }
+    }
+
+    pub fn expect_start_or_end(&mut self) -> io::Result<bool> {
+        match try!(self.read_next()) {
+            Token::Start => Ok(true),
+            Token::End => Ok(false),
+            Token::EndOfFile => Ok(false),
+            _ => unexpected("Expected start or end of group")
+        }
+    }
+
+    pub fn expect_tag(&mut self) -> io::Result<Tag> {
+        match try!(self.read_next()) {
+            Token::Value(Value::Tag(t)) => Ok(t),
+            _ => unexpected("Expected tag")
+        }
+    }
+
+    pub fn expect_bool(&mut self) -> io::Result<bool> {
+        match try!(self.read_next()) {
+            Token::Value(Value::Bool(b)) => Ok(b),
+            _ => unexpected("Expected bool")
+        }
+    }
+
+    pub fn expect_bool_array(&mut self) -> io::Result<Box<[bool]>> {
+        match try!(self.read_next()) {
+            Token::Value(Value::BoolArray(a)) => Ok(a),
+            _ => unexpected("Expected bool array")
+        }
+    }
+
+    pub fn expect_int(&mut self) -> io::Result<i32> {
+        match try!(self.read_next()) {
+            Token::Value(Value::Int(i)) => Ok(i),
+            _ => unexpected("Expected int")
+        }
+    }
+
+    pub fn expect_int_array(&mut self) -> io::Result<Box<[i32]>> {
+        match try!(self.read_next()) {
+            Token::Value(Value::IntArray(a)) => Ok(a),
+            _ => unexpected("Expected int array")
+        }
+    }
+
+    pub fn expect_double(&mut self) -> io::Result<f64> {
+        match try!(self.read_next()) {
+            Token::Value(Value::Double(d)) => Ok(d),
+            _ => unexpected("Expected double")
+        }
+    }
+
+    pub fn expect_double_array(&mut self) -> io::Result<Box<[f64]>> {
+        match try!(self.read_next()) {
+            Token::Value(Value::DoubleArray(a)) => Ok(a),
+            _ => unexpected("Expected double array")
+        }
+    }
+
+    pub fn expect_vec2(&mut self) -> io::Result<Vec2> {
+        match try!(self.read_next()) {
+            Token::Value(Value::Vec2(v)) => Ok(v),
+            _ => unexpected("Expected vec2")
+        }
+    }
+
+    pub fn expect_vec2_array(&mut self) -> io::Result<Box<[Vec2]>> {
+        match try!(self.read_next()) {
+            Token::Value(Value::Vec2Array(a)) => Ok(a),
+            _ => unexpected("Expected vec2 array")
+        }
+    }
+
+    pub fn expect_vec3(&mut self) -> io::Result<Vec3> {
+        match try!(self.read_next()) {
+            Token::Value(Value::Vec3(v)) => Ok(v),
+            _ => unexpected("Expected vec3")
+        }
+    }
+
+    pub fn expect_vec3_array(&mut self) -> io::Result<Box<[Vec3]>> {
+        match try!(self.read_next()) {
+            Token::Value(Value::Vec3Array(a)) => Ok(a),
+            _ => unexpected("Expected vec3 array")
+        }
+    }
+
+    pub fn expect_vec4(&mut self) -> io::Result<Vec4> {
+        match try!(self.read_next()) {
+            Token::Value(Value::Vec4(v)) => Ok(v),
+            _ => unexpected("Expected vec4")
+        }
+    }
+
+    pub fn expect_vec4_array(&mut self) -> io::Result<Box<[Vec4]>> {
+        match try!(self.read_next()) {
+            Token::Value(Value::Vec4Array(a)) => Ok(a),
+            _ => unexpected("Expected vec4 array")
+        }
+    }
+
+    pub fn expect_box2(&mut self) -> io::Result<Box2> {
+        match try!(self.read_next()) {
+            Token::Value(Value::Box2(b)) => Ok(b),
+            _ => unexpected("Expected box2")
+        }
+    }
+
+    pub fn expect_box2_array(&mut self) -> io::Result<Box<[Box2]>> {
+        match try!(self.read_next()) {
+            Token::Value(Value::Box2Array(a)) => Ok(a),
+            _ => unexpected("Expected box2 array")
+        }
+    }
+
+    pub fn expect_string(&mut self) -> io::Result<Box<str>> {
+        match try!(self.read_next()) {
+            Token::Value(Value::String(s)) => Ok(s),
+            _ => unexpected("Expected string")
+        }
+    }
+
+    pub fn expect_blob(&mut self) -> io::Result<Box<[u8]>> {
+        match try!(self.read_next()) {
+            Token::Value(Value::Blob(b)) => Ok(b),
+            _ => unexpected("Expected blob")
+        }
     }
 }
 
@@ -554,5 +692,138 @@ mod tests {
         assert!(is_token(reader.read_next(), Token::End));
         assert!(is_token(reader.read_next(), Token::EndOfFile));
 
+    }
+
+    #[test]
+    fn expect_start() {
+        let mut reader = setup(vec![0xfe]);
+        assert!(reader.expect_start().is_ok());
+
+        let mut reader = setup(vec![0xef]);
+        assert!(reader.expect_start().is_err());
+
+        let mut reader = setup(vec![0x01, 0x01]);
+        assert!(reader.expect_start().is_err());
+    }
+
+    #[test]
+    fn expect_start_or_end() {
+        let mut reader = setup(vec![0xfe]);
+        assert_eq!(reader.expect_start_or_end().unwrap(), true);
+
+        let mut reader = setup(vec![0xef]);
+        assert_eq!(reader.expect_start_or_end().unwrap(), false);
+
+        let mut reader = setup(vec![]);
+        assert_eq!(reader.expect_start_or_end().unwrap(), false);
+
+        let mut reader = setup(vec![0x01, 0x01]);
+        assert!(reader.expect_start_or_end().is_err());
+    }
+
+    #[test]
+    fn expect_simple_values() {
+        let mut reader = setup(vec![
+            0x00, 0x01,
+
+            0x01, 0xd0, 0x0f,
+
+            0x02,
+                0x00, 0x00, 0x00, 0x00, 0xd6, 0x6a, 0xf0, 0x40,
+            0x03,
+                0x00, 0x00, 0x00, 0x00, 0xd6, 0x6a, 0xf0, 0x40,
+                0x33, 0x33, 0x33, 0x33, 0xb3, 0x11, 0xab, 0x40,
+            0x04,
+                0x00, 0x00, 0x00, 0x00, 0xd6, 0x6a, 0xf0, 0x40,
+                0x33, 0x33, 0x33, 0x33, 0xb3, 0x11, 0xab, 0x40,
+                0x50, 0x8d, 0x97, 0x6e, 0xba, 0x20, 0xc1, 0xc0,
+            0x05,
+                0x00, 0x00, 0x00, 0x00, 0xd6, 0x6a, 0xf0, 0x40,
+                0x33, 0x33, 0x33, 0x33, 0xb3, 0x11, 0xab, 0x40,
+                0x50, 0x8d, 0x97, 0x6e, 0xba, 0x20, 0xc1, 0xc0,
+                0xae, 0x47, 0xe1, 0x7a, 0x14, 0x6a, 0x9d, 0xc0,
+            0x06,
+                0x00, 0x00, 0x00, 0x00, 0xd6, 0x6a, 0xf0, 0x40,
+                0x33, 0x33, 0x33, 0x33, 0xb3, 0x11, 0xab, 0x40,
+                0x50, 0x8d, 0x97, 0x6e, 0xba, 0x20, 0xc1, 0xc0,
+                0xae, 0x47, 0xe1, 0x7a, 0x14, 0x6a, 0x9d, 0xc0,
+
+            0xee, 0x53, 0x48, 0x41, 0x50,
+        ]);
+
+        assert_eq!(reader.expect_bool().unwrap(), true);
+        assert_eq!(reader.expect_int().unwrap(), 1000);
+        assert_eq!(reader.expect_double().unwrap(), 67245.375);
+        assert_eq!(reader.expect_vec2().unwrap(), (67245.375, 3464.85));
+        assert_eq!(reader.expect_vec3().unwrap(), (67245.375, 3464.85, -8769.4565));
+        assert_eq!(reader.expect_vec4().unwrap(), (67245.375, 3464.85, -8769.4565, -1882.52));
+        assert_eq!(reader.expect_box2().unwrap(), ((67245.375, 3464.85), (-8769.4565, -1882.52)));
+        assert_eq!(reader.expect_tag().unwrap(), tag!(S H A P));
+    }
+
+    #[test]
+    fn expect_simple_values_fail() {
+        assert!(setup(vec![0xfe]).expect_bool().is_err());
+        assert!(setup(vec![0xfe]).expect_int().is_err());
+        assert!(setup(vec![0xfe]).expect_double().is_err());
+        assert!(setup(vec![0xfe]).expect_vec2().is_err());
+        assert!(setup(vec![0xfe]).expect_vec3().is_err());
+        assert!(setup(vec![0xfe]).expect_vec4().is_err());
+        assert!(setup(vec![0xfe]).expect_box2().is_err());
+        assert!(setup(vec![0xfe]).expect_tag().is_err());
+    }
+
+    #[test]
+    fn expect_arrays() {
+        let mut reader = setup(vec![
+            0x80, 0x00,
+            0x81, 0x00,
+            0x82, 0x00,
+            0x83, 0x00,
+            0x84, 0x00,
+            0x85, 0x00,
+            0x86, 0x00,
+        ]);
+
+        assert_eq!(reader.expect_bool_array().unwrap(), vec![].into_boxed_slice());
+        assert_eq!(reader.expect_int_array().unwrap(), vec![].into_boxed_slice());
+        assert_eq!(reader.expect_double_array().unwrap(), vec![].into_boxed_slice());
+        assert_eq!(reader.expect_vec2_array().unwrap(), vec![].into_boxed_slice());
+        assert_eq!(reader.expect_vec3_array().unwrap(), vec![].into_boxed_slice());
+        assert_eq!(reader.expect_vec4_array().unwrap(), vec![].into_boxed_slice());
+        assert_eq!(reader.expect_box2_array().unwrap(), vec![].into_boxed_slice());
+    }
+
+    #[test]
+    fn expect_arrays_fail() {
+        assert!(setup(vec![0xfe]).expect_bool_array().is_err());
+        assert!(setup(vec![0xfe]).expect_int_array().is_err());
+        assert!(setup(vec![0xfe]).expect_double_array().is_err());
+        assert!(setup(vec![0xfe]).expect_vec2_array().is_err());
+        assert!(setup(vec![0xfe]).expect_vec3_array().is_err());
+        assert!(setup(vec![0xfe]).expect_vec4_array().is_err());
+        assert!(setup(vec![0xfe]).expect_box2_array().is_err());
+    }
+
+    #[test]
+    fn expect_string() {
+        let mut reader = setup(vec![
+            0x07, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f,
+            0xfe
+        ]);
+
+        assert_eq!(reader.expect_string().unwrap(), "Hello".to_string().into_boxed_str());
+        assert!(reader.expect_string().is_err());
+    }
+
+    #[test]
+    fn expect_blob() {
+        let mut reader = setup(vec![
+            0x08, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f,
+            0xfe
+        ]);
+
+        assert_eq!(reader.expect_blob().unwrap(), vec![0x48, 0x65, 0x6c, 0x6c, 0x6f].into_boxed_slice());
+        assert!(reader.expect_blob().is_err());
     }
 }
