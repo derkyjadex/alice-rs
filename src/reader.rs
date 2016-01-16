@@ -218,6 +218,23 @@ impl<R: Read> Reader<R> {
 
         Ok(result.into_boxed_slice())
     }
+
+    pub fn skip_to_end(&mut self) -> io::Result<()> {
+        let mut levels = 0;
+        loop {
+            match try!(self.read_next()) {
+                Token::Value(_) => (),
+                Token::Start => levels += 1,
+                Token::End if levels == 0 => break,
+                Token::End => levels -= 1,
+                Token::EndOfFile if levels == 0 => break,
+                Token::EndOfFile =>
+                    return Err(io::Error::new(io::ErrorKind::Other, "Unexpected end of file"))
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -488,5 +505,54 @@ mod tests {
             ((-1882.52, -8769.4565), (3464.85, 67245.375)),
         ].into_boxed_slice())));
         assert!(is_token(reader.read_next(), Token::EndOfFile));
+    }
+
+    #[test]
+    fn skip_to_end() {
+        let mut reader = setup(vec![]);
+        reader.skip_to_end().unwrap();
+        assert!(is_token(reader.read_next(), Token::EndOfFile));
+
+        let mut reader = setup(vec![0xfe, 0xef]);
+        reader.skip_to_end().unwrap();
+        assert!(is_token(reader.read_next(), Token::EndOfFile));
+
+        let mut reader = setup(vec![0xef, 0xef]);
+        reader.skip_to_end().unwrap();
+        assert!(is_token(reader.read_next(), Token::End));
+        assert!(is_token(reader.read_next(), Token::EndOfFile));
+
+        let mut reader = setup(vec![0xfe, 0xef, 0xef]);
+        reader.skip_to_end().unwrap();
+        assert!(is_token(reader.read_next(), Token::EndOfFile));
+
+        let mut reader = setup(vec![0xfe, 0xef, 0xef, 0xef]);
+        reader.skip_to_end().unwrap();
+        assert!(is_token(reader.read_next(), Token::End));
+        assert!(is_token(reader.read_next(), Token::EndOfFile));
+
+        let mut reader = setup(vec![0xfe]);
+        assert!(reader.skip_to_end().is_err());
+
+        let mut reader = setup(vec![
+            0x00, 0x01,
+            0x01, 0xf3, 0xed, 0x25,
+            0x03,
+                0x00, 0x00, 0x00, 0x00, 0xd6, 0x6a, 0xf0, 0x40,
+                0x33, 0x33, 0x33, 0x33, 0xb3, 0x11, 0xab, 0x40,
+            0xee, 0x53, 0x48, 0x41, 0x50,
+            0x07, 0x05,
+                0x48, 0x65, 0x6c, 0x6c, 0x6f,
+            0x08, 0x05,
+                0x48, 0x65, 0x6c, 0x6c, 0x6f,
+            0x81, 0x03,
+                0x0c, 0x80, 0x02, 0xd0, 0x0f,
+
+            0xef, 0xef
+        ]);
+        reader.skip_to_end().unwrap();
+        assert!(is_token(reader.read_next(), Token::End));
+        assert!(is_token(reader.read_next(), Token::EndOfFile));
+
     }
 }
