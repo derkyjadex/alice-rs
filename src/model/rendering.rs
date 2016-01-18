@@ -25,7 +25,9 @@ pub struct ModelBuffers {
 pub struct ModelRenderer<'a> {
     indices: NoIndices,
     params: DrawParameters<'a>,
-    program: Program
+    program: Program,
+    width: f32,
+    height: f32
 }
 
 impl<'a> ModelRenderer<'a> {
@@ -41,16 +43,23 @@ impl<'a> ModelRenderer<'a> {
                 include_str!("model.vert"),
                 include_str!("model.frag"),
                 None)
-                .unwrap()
+                .unwrap(),
+            width: 1.0,
+            height: 1.0
         }
     }
 
-    pub fn draw<S: Surface>(&self, surface: &mut S, w: f32, h: f32, model: &ModelBuffers) {
+    pub fn set_size(&mut self, width: f32, height: f32) {
+        self.width = width;
+        self.height = height;
+    }
+
+    pub fn draw<S: Surface>(&self, surface: &mut S, x: f32, y: f32, scale: f32, model: &ModelBuffers) {
         for path in &model.paths {
             let uniforms = uniform! {
-                viewport_size: [w, h],
-                translate: [w / 2.0, h / 2.0],
-                scale: 1f32,
+                viewport_size: [self.width, self.height],
+                translate: [x, y],
+                scale: scale,
                 colour: path.colour
             };
 
