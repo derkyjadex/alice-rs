@@ -1,0 +1,10 @@
+[package]
+name = "alice"
+version = "0.1.0"
+authors = ["James Deery <james.deery@jadex.org>"]
+
+[dependencies]
+glium = "*"
+
+[dependencies.aldata]
+path = "../aldata"
