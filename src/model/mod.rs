@@ -1,4 +1,4 @@
-use aldata::{Vec2, Vec3};
+use data::{Vec2, Vec3};
 
 pub struct Model {
     pub paths: Vec<Path>

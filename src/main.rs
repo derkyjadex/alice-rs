@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate glium;
 extern crate alice;
-extern crate aldata;
 extern crate rand;
 
 use std::fs::File;
@@ -11,7 +10,7 @@ use glium::glutin::{Event, ElementState, VirtualKeyCode, MouseScrollDelta};
 use alice::model::rendering::{ModelRenderer, prepare_model};
 use alice::model::io::read_model;
 use alice::model::{Model, Path, Point};
-use aldata::{Vec2, Vec3};
+use alice::data::{Vec2, Vec3};
 use rand::{thread_rng, Rng};
 
 fn main() {

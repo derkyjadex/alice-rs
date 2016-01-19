@@ -1,5 +1,5 @@
 use std::io::{self, Read, Write};
-use aldata::{Tag, Value, Vec3, Reader, Writer};
+use data::{Tag, Value, Vec3, Reader, Writer};
 use super::{Model, Path, Point};
 
 const SHAPE: Tag = tag!(S H A P);

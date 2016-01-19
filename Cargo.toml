@@ -6,6 +6,4 @@ authors = ["James Deery <james.deery@jadex.org>"]
 [dependencies]
 glium = "*"
 rand = "*"
-
-[dependencies.aldata]
-path = "../aldata"
+byteorder = "*"

@@ -2,7 +2,7 @@ use glium::{VertexBuffer, Program, Surface, Blend};
 use glium::backend::Facade;
 use glium::index::{NoIndices, PrimitiveType};
 use glium::draw_parameters::DrawParameters;
-use aldata::Vec2;
+use data::Vec2;
 use super::{Model, Point};
 
 #[derive(Copy, Clone)]
