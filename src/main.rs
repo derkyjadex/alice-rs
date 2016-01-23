@@ -6,7 +6,7 @@ extern crate rand;
 use std::fs::File;
 use std::io::Cursor;
 use glium::{DisplayBuild, Surface};
-use glium::glutin::{Event, ElementState, VirtualKeyCode, MouseScrollDelta};
+use glium::glutin::{Event, ElementState, VirtualKeyCode, MouseScrollDelta, MouseButton};
 use alice::model::rendering::{ModelRenderer, prepare_model};
 use alice::model::io::read_model;
 use alice::model::{Model, Path, Point};
@@ -33,11 +33,12 @@ fn main() {
         read_model(file).unwrap()
     };
 
-    let mut wobble = WobbleModel::new(&model);
+    let mut wobble = WobbleModel::new(&model, 0.5, 0.95);
 
     let mut x = 512.0;
     let mut y = 384.0;
     let mut scale = 1.0;
+    let mut mouse_pos = (0, 0);
 
     loop {
         let mut target = display.draw();
@@ -56,7 +57,7 @@ fn main() {
             match ev {
                 Event::Closed => return,
                 Event::KeyboardInput(ElementState::Pressed, _, Some(VirtualKeyCode::Escape)) => return,
-                Event::ReceivedCharacter(' ') => wobble.shuffle(),
+                Event::ReceivedCharacter(' ') => wobble.shuffle(10.0 / scale as f64),
                 Event::ReceivedCharacter('+') => scale *= 1.1,
                 Event::ReceivedCharacter('=') => scale *= 1.1,
                 Event::ReceivedCharacter('-') => scale /= 1.1,
@@ -69,6 +70,14 @@ fn main() {
                     x -= dx;
                     y += dy;
                 },
+                Event::MouseMoved(p) => mouse_pos = p,
+                Event::MouseInput(ElementState::Pressed, MouseButton::Left) => {
+                    let f = window.hidpi_factor() as f64;
+                    let (mx, my) = (mouse_pos.0 as f64 / f, h as f64 - mouse_pos.1 as f64 / f);
+                    let (mx, my) = (mx - x as f64, my - y as f64);
+                    let (mx, my) = (mx / scale as f64, my / scale as f64);
+                    wobble.push((mx, my), 0.3, 100.0 / scale as f64)
+                },
                 _ => ()
             }
         }
@@ -76,7 +85,9 @@ fn main() {
 }
 
 struct WobbleModel {
-    paths: Vec<WobblePath>
+    spring: f64,
+    damping: f64,
+    paths: Vec<WobblePath>,
 }
 
 struct WobblePath {
@@ -91,13 +102,15 @@ struct WobblePoint {
     velocity: Vec2
 }
 
-const N: f64 = 30.0;
-const K: f64 = 0.8;
-const D: f64 = 0.9;
+fn gauss(c: f64, x: f64) -> f64 {
+    (-x * x / (2.0 * c * c)).exp()
+}
 
 impl WobbleModel {
-    pub fn new(model: &Model) -> WobbleModel {
+    pub fn new(model: &Model, spring: f64, damping: f64) -> WobbleModel {
         WobbleModel {
+            spring: spring,
+            damping: damping,
             paths: model.paths
                 .iter()
                 .map(|path| WobblePath {
@@ -138,12 +151,26 @@ impl WobbleModel {
         }
     }
 
-    pub fn shuffle(&mut self) {
+    pub fn shuffle(&mut self, v: f64) {
         let mut rng = rand::thread_rng();
         for path in self.paths.iter_mut() {
             for point in path.points.iter_mut() {
-                point.offset.0 += rng.gen_range(-N, N);
-                point.offset.1 += rng.gen_range(-N, N);
+                point.velocity.0 += rng.gen_range(-v, v);
+                point.velocity.1 += rng.gen_range(-v, v);
+            }
+        }
+    }
+
+    pub fn push(&mut self, (x, y): Vec2, s: f64, w: f64) {
+        for path in self.paths.iter_mut() {
+            for point in path.points.iter_mut() {
+                let (px, py) = point.location;
+                let (dx, dy) = (px - x, py - y);
+                let d = (dx * dx + dy * dy).sqrt();
+                let d = s * gauss(w, d);
+
+                point.velocity.0 += d * dx;
+                point.velocity.1 += d * dy;
             }
         }
     }
@@ -154,10 +181,10 @@ impl WobbleModel {
                 let (mut ox, mut oy) = point.offset;
                 let (mut vx, mut vy) = point.velocity;
 
-                vx += -K * ox;
-                vy += -K * oy;
-                vx *= D;
-                vy *= D;
+                vx += -self.spring * ox;
+                vy += -self.spring * oy;
+                vx *= self.damping;
+                vy *= self.damping;
 
                 ox += vx;
                 oy += vy;
