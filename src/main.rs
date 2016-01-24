@@ -8,7 +8,6 @@ use std::io::Cursor;
 use glium::{DisplayBuild, Surface};
 use glium::glutin::{Event, ElementState, VirtualKeyCode, MouseScrollDelta, MouseButton};
 use alice::model::rendering::{ModelRenderer, prepare_model};
-use alice::model::io::read_model;
 use alice::model::{Model, Path, Point};
 use alice::data::{Vec2, Vec3};
 use rand::{thread_rng, Rng};
@@ -26,11 +25,13 @@ fn main() {
 
     let model = if let Some(path) = std::env::args().nth(1) {
         let file = File::open(path).unwrap();
-        read_model(file).unwrap()
+        let mut reader = alice::data::BinaryReader::new(file);
+        Model::read(&mut reader).unwrap()
     } else {
         let bytes = include_bytes!("cat.model");
         let file: Cursor<&[u8]> = Cursor::new(bytes);
-        read_model(file).unwrap()
+        let mut reader = alice::data::BinaryReader::new(file);
+        Model::read(&mut reader).unwrap()
     };
 
     let mut wobble = WobbleModel::new(&model, 0.5, 0.95);
