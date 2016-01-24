@@ -1,5 +1,5 @@
 use std::io::{self, Write};
-use super::*;
+use super::{Value, Tag, Vec2, Vec3, Vec4, Box2, Writer};
 
 pub struct TextWriter<W> {
     output: W,
@@ -21,36 +21,6 @@ impl<W: Write> TextWriter<W> {
             try!(self.output.write_all(b"  "));
         }
         Ok(())
-    }
-
-    pub fn write_start(&mut self) -> io::Result<()> {
-        let indent = self.indent;
-        if (indent == 0 && !self.first) || indent > 0 {
-            try!(self.output.write_all(b"\n"));
-        }
-
-        try!(self.write_indent(indent));
-        try!(self.output.write_all(b"("));
-
-        self.first = true;
-        self.indent += 1;
-
-        Ok(())
-    }
-
-    pub fn write_end(&mut self) -> io::Result<()> {
-        self.indent -= 1;
-        self.output.write_all(b")")
-    }
-
-    pub fn write_value(&mut self, value: &Value) -> io::Result<()> {
-        if self.first {
-            self.first = false;
-        } else {
-            try!(self.output.write_all(b" "));
-        }
-
-        self.write_single_value(value)
     }
 
     fn write_single_value(&mut self, value: &Value) -> io::Result<()> {
@@ -142,10 +112,42 @@ impl<W: Write> TextWriter<W> {
     }
 }
 
+impl<W: Write> Writer for TextWriter<W> {
+    fn write_start(&mut self) -> io::Result<()> {
+        let indent = self.indent;
+        if (indent == 0 && !self.first) || indent > 0 {
+            try!(self.output.write_all(b"\n"));
+        }
+
+        try!(self.write_indent(indent));
+        try!(self.output.write_all(b"("));
+
+        self.first = true;
+        self.indent += 1;
+
+        Ok(())
+    }
+
+    fn write_end(&mut self) -> io::Result<()> {
+        self.indent -= 1;
+        self.output.write_all(b")")
+    }
+
+    fn write_value(&mut self, value: &Value) -> io::Result<()> {
+        if self.first {
+            self.first = false;
+        } else {
+            try!(self.output.write_all(b" "));
+        }
+
+        self.write_single_value(value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::super::Value;
+    use super::super::{Value, Writer};
     use std::io::Cursor;
 
     fn setup() -> TextWriter<Cursor<Vec<u8>>> {

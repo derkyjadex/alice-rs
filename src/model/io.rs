@@ -7,12 +7,12 @@ const PATHS: Tag = tag!(P T H S);
 const COLOUR: Tag = tag!(C O L R);
 const POINTS: Tag = tag!(P N T S);
 
-struct ModelReader<'a, R: 'a> {
-    reader: &'a mut Reader<R>
+struct ModelReader<'a> {
+    reader: &'a mut Reader
 }
 
-impl<'a, R: Read> ModelReader<'a, R> {
-    pub fn new(reader: &'a mut Reader<R>) -> ModelReader<'a, R> {
+impl<'a> ModelReader<'a> {
+    pub fn new(reader: &'a mut Reader) -> ModelReader<'a> {
         ModelReader {
             reader: reader
         }
@@ -103,12 +103,12 @@ impl<'a, R: Read> ModelReader<'a, R> {
     }
 }
 
-struct ModelWriter<'a, W: 'a> {
-    writer: &'a mut Writer<W>
+pub struct ModelWriter<'a> {
+    writer: &'a mut Writer
 }
 
-impl<'a, W: Write> ModelWriter<'a, W> {
-    pub fn new(writer: &'a mut Writer<W>) -> ModelWriter<'a, W> {
+impl<'a> ModelWriter<'a> {
+    pub fn new(writer: &'a mut Writer) -> ModelWriter<'a> {
         ModelWriter {
             writer: writer
         }
@@ -165,11 +165,11 @@ impl<'a, W: Write> ModelWriter<'a, W> {
 }
 
 pub fn read_model<R: Read>(input: R) -> io::Result<Model> {
-    let mut reader = Reader::new(input);
+    let mut reader = super::super::data::BinaryReader::new(input);
     ModelReader::new(&mut reader).read_model()
 }
 
 pub fn write_model<W: Write>(output: W, model: &Model) -> io::Result<()> {
-    let mut writer = Writer::new(output);
+    let mut writer = super::super::data::BinaryWriter::new(output);
     ModelWriter::new(&mut writer).write_model(model)
 }

@@ -27,11 +27,18 @@ pub enum Value {
 
 #[macro_use]
 pub mod macros;
-mod reader;
-mod writer;
+
+pub mod reader;
+mod binary_reader;
+
+pub mod writer;
+mod binary_writer;
 mod text_writer;
+
 mod utils;
 
+pub use self::reader::{Token, Reader};
+pub use self::binary_reader::BinaryReader;
 pub use self::writer::Writer;
-pub use self::reader::Reader;
+pub use self::binary_writer::BinaryWriter;
 pub use self::text_writer::TextWriter;
