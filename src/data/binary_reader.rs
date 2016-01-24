@@ -17,23 +17,6 @@ impl<R: Read> BinaryReader<R> {
         BinaryReader { input: input }
     }
 
-    fn read_exact(&mut self, mut buf: &mut [u8]) -> io::Result<()> {
-        while !buf.is_empty() {
-            match self.input.read(buf) {
-                Ok(0) => break,
-                Ok(n) => { let tmp = buf; buf = &mut tmp[n..]; },
-                Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {},
-                Err(e) => return Err(e),
-            }
-        }
-
-        if !buf.is_empty() {
-            Err(io::Error::new(io::ErrorKind::InvalidData, "failed to fill whole buffer"))
-        } else {
-            Ok(())
-        }
-    }
-
     fn read_value(&mut self, t: u8) -> io::Result<Value> {
         match t {
             0x00 => self.read_bool().map(Value::Bool),
@@ -77,7 +60,7 @@ impl<R: Read> BinaryReader<R> {
 
     fn read_bool(&mut self) -> io::Result<bool> {
         let mut buffer = [0; 1];
-        try!(self.read_exact(&mut buffer));
+        try!(self.input.read_exact(&mut buffer));
 
         Ok(buffer[0] != 0)
     }
@@ -92,7 +75,7 @@ impl<R: Read> BinaryReader<R> {
                 return invalid_token();
             }
 
-            try!(self.read_exact(&mut buffer));
+            try!(self.input.read_exact(&mut buffer));
 
             result |= (u64::from(buffer[0]) & 0x7f) << (length * 7);
             length += 1;
@@ -161,7 +144,7 @@ impl<R: Read> BinaryReader<R> {
     fn read_string(&mut self) -> io::Result<Box<str>> {
         let length = try!(self.read_uint()) as usize;
         let mut buffer = vec![0; length];
-        try!(self.read_exact(&mut buffer[..]));
+        try!(self.input.read_exact(&mut buffer[..]));
 
         String::from_utf8(buffer)
             .map(|s| s.into_boxed_str())
@@ -171,7 +154,7 @@ impl<R: Read> BinaryReader<R> {
     fn read_blob(&mut self) -> io::Result<Box<[u8]>> {
         let length = try!(self.read_uint()) as usize;
         let mut buffer = vec![0; length];
-        try!(self.read_exact(&mut buffer[..]));
+        try!(self.input.read_exact(&mut buffer[..]));
 
         Ok(buffer.into_boxed_slice())
     }
