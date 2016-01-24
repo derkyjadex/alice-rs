@@ -5,3 +5,4 @@ extern crate byteorder;
 #[macro_use]
 pub mod data;
 pub mod model;
+pub mod widget;
