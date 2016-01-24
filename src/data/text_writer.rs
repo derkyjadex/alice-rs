@@ -16,6 +16,10 @@ impl<W: Write> TextWriter<W> {
         }
     }
 
+    pub fn into_inner(self) -> W {
+        self.output
+    }
+
     fn write_indent(&mut self, n: i32) -> io::Result<()> {
         for _ in 0..n {
             try!(self.output.write_all(b"  "));

@@ -35,6 +35,10 @@ impl<W: Write> BinaryWriter<W> {
         BinaryWriter { output: output }
     }
 
+    pub fn into_inner(self) -> W {
+        self.output
+    }
+
     fn write_tag(&mut self, value: Tag) -> io::Result<()> {
         self.output.write_u32::<BigEndian>(value)
             .map_err(map_to_io)

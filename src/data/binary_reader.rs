@@ -17,6 +17,10 @@ impl<R: Read> BinaryReader<R> {
         BinaryReader { input: input }
     }
 
+    pub fn into_inner(self) -> R {
+        self.input
+    }
+
     fn read_value(&mut self, t: u8) -> io::Result<Value> {
         match t {
             0x00 => self.read_bool().map(Value::Bool),
