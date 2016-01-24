@@ -13,6 +13,25 @@ fn unexpected<T>(msg: &str) -> io::Result<T> {
     Err(io::Error::new(io::ErrorKind::InvalidData, msg))
 }
 
+macro_rules! expect {
+    ($_self:ident, $_enum:ident) => {
+        match try!($_self.read_next()) {
+            Token::Value(Value::$_enum(v)) => Ok(v),
+            _ => unexpected(concat!("Expected ", stringify!($_enum)))
+        }
+    }
+}
+
+macro_rules! expect_or_end {
+    ($_self:ident, $_enum:ident) => {
+        match try!($_self.read_next()) {
+            Token::Value(Value::$_enum(v)) => Ok(Some(v)),
+            Token::End => Ok(None),
+            _ => unexpected(concat!("Expected ", stringify!($_enum), " or end of group"))
+        }
+    }
+}
+
 pub trait Reader {
     fn read_next(&mut self) -> io::Result<Token>;
 
@@ -49,121 +68,137 @@ pub trait Reader {
     }
 
     fn expect_tag(&mut self) -> io::Result<Tag> {
-        match try!(self.read_next()) {
-            Token::Value(Value::Tag(t)) => Ok(t),
-            _ => unexpected("Expected tag")
-        }
+        expect!(self, Tag)
+    }
+
+    fn expect_tag_or_end(&mut self) -> io::Result<Option<Tag>> {
+        expect_or_end!(self, Tag)
     }
 
     fn expect_bool(&mut self) -> io::Result<bool> {
-        match try!(self.read_next()) {
-            Token::Value(Value::Bool(b)) => Ok(b),
-            _ => unexpected("Expected bool")
-        }
+        expect!(self, Bool)
+    }
+
+    fn expect_bool_or_end(&mut self) -> io::Result<Option<bool>> {
+        expect_or_end!(self, Bool)
     }
 
     fn expect_bool_array(&mut self) -> io::Result<Box<[bool]>> {
-        match try!(self.read_next()) {
-            Token::Value(Value::BoolArray(a)) => Ok(a),
-            _ => unexpected("Expected bool array")
-        }
+        expect!(self, BoolArray)
+    }
+
+    fn expect_bool_array_or_end(&mut self) -> io::Result<Option<Box<[bool]>>> {
+        expect_or_end!(self, BoolArray)
     }
 
     fn expect_int(&mut self) -> io::Result<i32> {
-        match try!(self.read_next()) {
-            Token::Value(Value::Int(i)) => Ok(i),
-            _ => unexpected("Expected int")
-        }
+        expect!(self, Int)
+    }
+
+    fn expect_int_or_end(&mut self) -> io::Result<Option<i32>> {
+        expect_or_end!(self, Int)
     }
 
     fn expect_int_array(&mut self) -> io::Result<Box<[i32]>> {
-        match try!(self.read_next()) {
-            Token::Value(Value::IntArray(a)) => Ok(a),
-            _ => unexpected("Expected int array")
-        }
+        expect!(self, IntArray)
+    }
+
+    fn expect_int_array_or_end(&mut self) -> io::Result<Option<Box<[i32]>>> {
+        expect_or_end!(self, IntArray)
     }
 
     fn expect_double(&mut self) -> io::Result<f64> {
-        match try!(self.read_next()) {
-            Token::Value(Value::Double(d)) => Ok(d),
-            _ => unexpected("Expected double")
-        }
+        expect!(self, Double)
+    }
+
+    fn expect_double_or_end(&mut self) -> io::Result<Option<f64>> {
+        expect_or_end!(self, Double)
     }
 
     fn expect_double_array(&mut self) -> io::Result<Box<[f64]>> {
-        match try!(self.read_next()) {
-            Token::Value(Value::DoubleArray(a)) => Ok(a),
-            _ => unexpected("Expected double array")
-        }
+        expect!(self, DoubleArray)
+    }
+
+    fn expect_double_array_or_end(&mut self) -> io::Result<Option<Box<[f64]>>> {
+        expect_or_end!(self, DoubleArray)
     }
 
     fn expect_vec2(&mut self) -> io::Result<Vec2> {
-        match try!(self.read_next()) {
-            Token::Value(Value::Vec2(v)) => Ok(v),
-            _ => unexpected("Expected vec2")
-        }
+        expect!(self, Vec2)
+    }
+
+    fn expect_vec2_or_end(&mut self) -> io::Result<Option<Vec2>> {
+        expect_or_end!(self, Vec2)
     }
 
     fn expect_vec2_array(&mut self) -> io::Result<Box<[Vec2]>> {
-        match try!(self.read_next()) {
-            Token::Value(Value::Vec2Array(a)) => Ok(a),
-            _ => unexpected("Expected vec2 array")
-        }
+        expect!(self, Vec2Array)
+    }
+
+    fn expect_vec2_array_or_end(&mut self) -> io::Result<Option<Box<[Vec2]>>> {
+        expect_or_end!(self, Vec2Array)
     }
 
     fn expect_vec3(&mut self) -> io::Result<Vec3> {
-        match try!(self.read_next()) {
-            Token::Value(Value::Vec3(v)) => Ok(v),
-            _ => unexpected("Expected vec3")
-        }
+        expect!(self, Vec3)
+    }
+
+    fn expect_vec3_or_end(&mut self) -> io::Result<Option<Vec3>> {
+        expect_or_end!(self, Vec3)
     }
 
     fn expect_vec3_array(&mut self) -> io::Result<Box<[Vec3]>> {
-        match try!(self.read_next()) {
-            Token::Value(Value::Vec3Array(a)) => Ok(a),
-            _ => unexpected("Expected vec3 array")
-        }
+        expect!(self, Vec3Array)
+    }
+
+    fn expect_vec3_array_or_end(&mut self) -> io::Result<Option<Box<[Vec3]>>> {
+        expect_or_end!(self, Vec3Array)
     }
 
     fn expect_vec4(&mut self) -> io::Result<Vec4> {
-        match try!(self.read_next()) {
-            Token::Value(Value::Vec4(v)) => Ok(v),
-            _ => unexpected("Expected vec4")
-        }
+        expect!(self, Vec4)
+    }
+
+    fn expect_vec4_or_end(&mut self) -> io::Result<Option<Vec4>> {
+        expect_or_end!(self, Vec4)
     }
 
     fn expect_vec4_array(&mut self) -> io::Result<Box<[Vec4]>> {
-        match try!(self.read_next()) {
-            Token::Value(Value::Vec4Array(a)) => Ok(a),
-            _ => unexpected("Expected vec4 array")
-        }
+        expect!(self, Vec4Array)
+    }
+
+    fn expect_vec4_array_or_end(&mut self) -> io::Result<Option<Box<[Vec4]>>> {
+        expect_or_end!(self, Vec4Array)
     }
 
     fn expect_box2(&mut self) -> io::Result<Box2> {
-        match try!(self.read_next()) {
-            Token::Value(Value::Box2(b)) => Ok(b),
-            _ => unexpected("Expected box2")
-        }
+        expect!(self, Box2)
+    }
+
+    fn expect_box2_or_end(&mut self) -> io::Result<Option<Box2>> {
+        expect_or_end!(self, Box2)
     }
 
     fn expect_box2_array(&mut self) -> io::Result<Box<[Box2]>> {
-        match try!(self.read_next()) {
-            Token::Value(Value::Box2Array(a)) => Ok(a),
-            _ => unexpected("Expected box2 array")
-        }
+        expect!(self, Box2Array)
+    }
+
+    fn expect_box2_array_or_end(&mut self) -> io::Result<Option<Box<[Box2]>>> {
+        expect_or_end!(self, Box2Array)
     }
 
     fn expect_string(&mut self) -> io::Result<Box<str>> {
-        match try!(self.read_next()) {
-            Token::Value(Value::String(s)) => Ok(s),
-            _ => unexpected("Expected string")
-        }
+        expect!(self, String)
+    }
+
+    fn expect_string_or_end(&mut self) -> io::Result<Option<Box<str>>> {
+        expect_or_end!(self, String)
     }
 
     fn expect_blob(&mut self) -> io::Result<Box<[u8]>> {
-        match try!(self.read_next()) {
-            Token::Value(Value::Blob(b)) => Ok(b),
-            _ => unexpected("Expected blob")
-        }
+        expect!(self, Blob)
+    }
+    fn expect_blob_or_end(&mut self) -> io::Result<Option<Box<[u8]>>> {
+        expect_or_end!(self, Blob)
     }
 }
