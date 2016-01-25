@@ -1,3 +1,5 @@
+pub mod rendering;
+
 use std::io::{Result, Error, ErrorKind};
 use super::data::{Value, Tag, Vec2, Vec3, Vec4, Box2, Reader, Writer};
 use super::model::Model;
@@ -12,42 +14,42 @@ pub enum Element {
 
 #[derive(Default)]
 pub struct Widget {
-    location: Vec2,
-    size: Vec2,
-    fill_colour: Vec4,
-    border_colour: Vec3,
-    border_width: i32,
+    pub location: Vec2,
+    pub size: Vec2,
+    pub fill_colour: Vec4,
+    pub border_colour: Vec3,
+    pub border_width: i32,
 
-    bindings: Vec<(Event, Binding)>,
-    children: Vec<Element>,
+    pub bindings: Vec<(Event, Binding)>,
+    pub children: Vec<Element>,
 }
 
 #[derive(Default)]
 pub struct Group {
-    location: Vec2,
-    children: Vec<Element>
+    pub location: Vec2,
+    pub children: Vec<Element>
 }
 
 #[derive(Default)]
 pub struct Grid {
-    bounds: Box2,
-    size: Vec2,
-    offset: Vec2,
-    colour: Vec3
+    pub bounds: Box2,
+    pub size: Vec2,
+    pub offset: Vec2,
+    pub colour: Vec3
 }
 
 pub struct ModelElement {
-     location: Vec2,
-     scale: f64,
-     model: Model,
+     pub location: Vec2,
+     pub scale: f64,
+     pub model: Model,
 }
 
 #[derive(Default)]
 pub struct Text {
-    location: Vec2,
-    size: f64,
-    colour: Vec3,
-    value: String,
+    pub location: Vec2,
+    pub size: f64,
+    pub colour: Vec3,
+    pub value: String,
 }
 
 #[derive(Copy, Clone)]
@@ -75,7 +77,7 @@ const KEY: Tag = tag!(K E Y _);
 const KEYBOARD_FOCUS_LOST: Tag = tag!(K L S T);
 
 impl Element {
-    fn write(&self, writer: &mut Writer) -> Result<()> {
+    pub fn write(&self, writer: &mut Writer) -> Result<()> {
         match self {
             &Element::Widget(ref widget) => widget.write(writer),
             &Element::Group(ref group) => group.write(writer),
@@ -291,7 +293,7 @@ impl Event {
 }
 
 
-fn update_children(children: &mut Vec<Element>, reader: &mut Reader) -> Result<()> {
+pub fn update_children(children: &mut Vec<Element>, reader: &mut Reader) -> Result<()> {
     let mut i = 0;
 
     while try!(reader.expect_start_or_end()) {
