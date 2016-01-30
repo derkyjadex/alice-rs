@@ -30,6 +30,7 @@ pub mod macros;
 
 pub mod reader;
 mod binary_reader;
+mod text_reader;
 
 pub mod writer;
 mod binary_writer;
@@ -39,6 +40,7 @@ mod utils;
 
 pub use self::reader::{Token, Reader};
 pub use self::binary_reader::BinaryReader;
+pub use self::text_reader::TextReader;
 pub use self::writer::Writer;
 pub use self::binary_writer::BinaryWriter;
 pub use self::text_writer::TextWriter;
