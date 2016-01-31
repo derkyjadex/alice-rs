@@ -1,14 +1,6 @@
 use std::io::{self, Read};
 use super::*;
 
-#[derive(PartialEq, Debug)]
-pub enum Token {
-    Start,
-    End,
-    Value(Value),
-    EndOfFile
-}
-
 fn invalid_token<T>() -> io::Result<T> {
     Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid token"))
 }
@@ -295,24 +287,6 @@ impl<R: Read> TextReader<R> {
         }
     }
 
-    pub fn read_next(&mut self) -> io::Result<Token> {
-        match try!(self.sub.read_next()) {
-            SubToken::Start => return Ok(Token::Start),
-            SubToken::End => return Ok(Token::End),
-            SubToken::EndOfFile => return Ok(Token::EndOfFile),
-            SubToken::Tag(tag) => return Ok(Token::Value(Value::Tag(tag))),
-            SubToken::Bool(v) => return Ok(Token::Value(Value::Bool(v))),
-            SubToken::Int(v) => return Ok(Token::Value(Value::Int(v))),
-            SubToken::Double(v) => return Ok(Token::Value(Value::Double(v))),
-            SubToken::String(v) => return Ok(Token::Value(Value::String(v.into_boxed_str()))),
-            SubToken::Blob(v) => return Ok(Token::Value(Value::Blob(v.into_boxed_slice()))),
-            SubToken::VecStart => return self.read_vec(),
-            SubToken::ArrayStart => return self.read_array(),
-            SubToken::VecEnd | SubToken::ArrayEnd =>
-                return invalid_token()
-        }
-    }
-
     fn read_vec(&mut self) -> io::Result<Token> {
         let mut xs = Vec::new();
 
@@ -477,10 +451,30 @@ impl<R: Read> TextReader<R> {
     }
 }
 
+impl<R: Read> Reader for TextReader<R> {
+    fn read_next(&mut self) -> io::Result<Token> {
+        match try!(self.sub.read_next()) {
+            SubToken::Start => return Ok(Token::Start),
+            SubToken::End => return Ok(Token::End),
+            SubToken::EndOfFile => return Ok(Token::EndOfFile),
+            SubToken::Tag(tag) => return Ok(Token::Value(Value::Tag(tag))),
+            SubToken::Bool(v) => return Ok(Token::Value(Value::Bool(v))),
+            SubToken::Int(v) => return Ok(Token::Value(Value::Int(v))),
+            SubToken::Double(v) => return Ok(Token::Value(Value::Double(v))),
+            SubToken::String(v) => return Ok(Token::Value(Value::String(v.into_boxed_str()))),
+            SubToken::Blob(v) => return Ok(Token::Value(Value::Blob(v.into_boxed_slice()))),
+            SubToken::VecStart => return self.read_vec(),
+            SubToken::ArrayStart => return self.read_array(),
+            SubToken::VecEnd | SubToken::ArrayEnd =>
+                return invalid_token()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::super::Value;
+    use super::super::{Value, Token, Reader};
     use std::io::{self, Cursor};
 
     fn setup(data: &[u8]) -> TextReader<Cursor<&[u8]>> {
