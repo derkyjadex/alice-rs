@@ -69,23 +69,57 @@ impl<W: Write> TextWriter<W> {
     }
 
     fn write_double(&mut self, value: f64) -> io::Result<()> {
-        write!(self.output, "{}", value)
+        if value.fract() == 0.0 {
+           write!(self.output, "{:.1}", value)
+        } else {
+            write!(self.output, "{}", value)
+        }
     }
 
     fn write_vec2(&mut self, (x, y): Vec2) -> io::Result<()> {
-        write!(self.output, "[{} {}]", x, y)
+        try!(self.output.write(b"["));
+        try!(self.write_double(x));
+        try!(self.output.write(b" "));
+        try!(self.write_double(y));
+        try!(self.output.write(b"]"));
+        Ok(())
     }
 
     fn write_vec3(&mut self, (x, y, z): Vec3) -> io::Result<()> {
-        write!(self.output, "[{} {} {}]", x, y, z)
+        try!(self.output.write(b"["));
+        try!(self.write_double(x));
+        try!(self.output.write(b" "));
+        try!(self.write_double(y));
+        try!(self.output.write(b" "));
+        try!(self.write_double(z));
+        try!(self.output.write(b"]"));
+        Ok(())
     }
 
     fn write_vec4(&mut self, (x, y, z, w): Vec4) -> io::Result<()> {
-        write!(self.output, "[{} {} {} {}]", x, y, z, w)
+        try!(self.output.write(b"["));
+        try!(self.write_double(x));
+        try!(self.output.write(b" "));
+        try!(self.write_double(y));
+        try!(self.output.write(b" "));
+        try!(self.write_double(z));
+        try!(self.output.write(b" "));
+        try!(self.write_double(w));
+        try!(self.output.write(b"]"));
+        Ok(())
     }
 
     fn write_box2(&mut self, ((x, y), (z, w)): Box2) -> io::Result<()> {
-        write!(self.output, "[[{} {}] [{} {}]]", x, y, z, w)
+        try!(self.output.write(b"[["));
+        try!(self.write_double(x));
+        try!(self.output.write(b" "));
+        try!(self.write_double(y));
+        try!(self.output.write(b"] ["));
+        try!(self.write_double(z));
+        try!(self.output.write(b" "));
+        try!(self.write_double(w));
+        try!(self.output.write(b"]]"));
+        Ok(())
     }
 
     fn write_string(&mut self, value: &Box<str>) -> io::Result<()> {
@@ -183,10 +217,15 @@ mod tests {
         writer.write_value(&Value::Int(128)).unwrap();
         writer.write_value(&Value::Int(1000)).unwrap();
         writer.write_value(&Value::Int(-310138)).unwrap();
+        writer.write_value(&Value::Double(0.0)).unwrap();
         writer.write_value(&Value::Double(67245.375)).unwrap();
+        writer.write_value(&Value::Vec2((0.0, 1.0))).unwrap();
         writer.write_value(&Value::Vec2((67245.375, 3464.85))).unwrap();
+        writer.write_value(&Value::Vec3((0.0, 1.0, 2.0))).unwrap();
         writer.write_value(&Value::Vec3((67245.375, 3464.85, -8769.4565))).unwrap();
+        writer.write_value(&Value::Vec4((0.0, 1.0, 2.0, 3.0))).unwrap();
         writer.write_value(&Value::Vec4((67245.375, 3464.85, -8769.4565, -1882.52))).unwrap();
+        writer.write_value(&Value::Box2(((0.0, 1.0), (2.0, 3.0)))).unwrap();
         writer.write_value(&Value::Box2(((67245.375, 3464.85), (-8769.4565, -1882.52)))).unwrap();
         writer.write_value(&Value::Tag(tag!(S H A P))).unwrap();
 
@@ -198,10 +237,15 @@ mod tests {
             128 \
             1000 \
             -310138 \
+            0.0 \
             67245.375 \
+            [0.0 1.0] \
             [67245.375 3464.85] \
+            [0.0 1.0 2.0] \
             [67245.375 3464.85 -8769.4565] \
+            [0.0 1.0 2.0 3.0] \
             [67245.375 3464.85 -8769.4565 -1882.52] \
+            [[0.0 1.0] [2.0 3.0]] \
             [[67245.375 3464.85] [-8769.4565 -1882.52]] \
             SHAP\
             ");
@@ -371,9 +415,9 @@ mod tests {
         assert_eq!(result(writer),
 r#"(DICT "one" 1 "two"
   (ABCD {
-      [1 2]
-      [3 4]
-      [5 6]
+      [1.0 2.0]
+      [3.0 4.0]
+      [5.0 6.0]
     }) "three" false)"#);
     }
 }
