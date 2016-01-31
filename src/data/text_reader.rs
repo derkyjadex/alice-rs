@@ -1,10 +1,6 @@
 use std::io::{self, Read};
 use super::*;
 
-fn invalid_token<T>() -> io::Result<T> {
-    Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid token"))
-}
-
 fn from_hex(b: u8) -> u8 {
     match b {
         b'0' ... b'9' =>
@@ -31,6 +27,8 @@ enum SubToken {
 
 struct SubReader<R> {
     input: R,
+    line: i32,
+    pos: i32,
     last: Option<u8>
 }
 
@@ -38,8 +36,15 @@ impl<R: Read> SubReader<R> {
     fn new(input: R) -> SubReader<R> {
         SubReader {
             input: input,
+            line: 1,
+            pos: 0,
             last: None
         }
+    }
+
+    fn invalid_token<T>(&self) -> io::Result<T> {
+        let msg = format!("Invalid token at {}:{}", self.line, self.pos);
+        Err(io::Error::new(io::ErrorKind::InvalidData, msg))
     }
 
     fn next_byte(&mut self) -> io::Result<Option<u8>> {
@@ -50,6 +55,12 @@ impl<R: Read> SubReader<R> {
             self.last = if n == 0 {
                 None
             } else {
+                if buffer[0] == b'\n' {
+                    self.line += 1;
+                    self.pos = 0;
+                } else {
+                    self.pos += 1;
+                }
                 Some(buffer[0])
             }
         }
@@ -103,7 +114,7 @@ impl<R: Read> SubReader<R> {
                 b't' => return self.read_bool(b"true", true),
                 b'f' => return self.read_bool(b"false", false),
                 _ =>
-                    return invalid_token()
+                    return self.invalid_token()
             }
         }
 
@@ -125,17 +136,17 @@ impl<R: Read> SubReader<R> {
                     tag = tag << 8 | b as u32;
                     self.consume();
                 },
-                _ => return invalid_token()
+                _ => return self.invalid_token()
             }
         }
 
-        invalid_token()
+        self.invalid_token()
     }
 
     fn read_bool(&mut self, expected: &[u8], result: bool) -> io::Result<SubToken> {
         for &b in expected {
             if try!(self.next_byte()) != Some(b) {
-                return invalid_token();
+                return self.invalid_token();
             }
             self.consume();
         }
@@ -146,11 +157,11 @@ impl<R: Read> SubReader<R> {
                 b')' | b']' | b'}' =>
                     return Ok(SubToken::Bool(result)),
 
-                _ => return invalid_token()
+                _ => return self.invalid_token()
             }
         }
 
-        invalid_token()
+        self.invalid_token()
     }
 
     fn read_number(&mut self) -> io::Result<SubToken> {
@@ -179,11 +190,11 @@ impl<R: Read> SubReader<R> {
                     self.consume();
                     return self.read_blob();
                 }
-                _ => return invalid_token()
+                _ => return self.invalid_token()
             }
         }
 
-        invalid_token()
+        self.invalid_token()
     }
 
     fn read_double(&mut self, buffer: Vec<u8>) -> io::Result<SubToken> {
@@ -209,11 +220,11 @@ impl<R: Read> SubReader<R> {
                     buffer.push(b);
                     self.consume();
                 },
-                _ => return invalid_token()
+                _ => return self.invalid_token()
             }
         }
 
-        invalid_token()
+        self.invalid_token()
     }
 
     fn read_blob(&mut self) -> io::Result<SubToken> {
@@ -236,11 +247,11 @@ impl<R: Read> SubReader<R> {
                     }
                     self.consume()
                 },
-                _ => return invalid_token()
+                _ => return self.invalid_token()
             }
         }
 
-        invalid_token()
+        self.invalid_token()
     }
 
     fn read_string(&mut self) -> io::Result<SubToken> {
@@ -259,7 +270,7 @@ impl<R: Read> SubReader<R> {
                     self.consume();
                 },
                 _ if escaped =>
-                    return invalid_token(),
+                    return self.invalid_token(),
 
                 b'"' => {
                     escaped = true;
@@ -272,7 +283,7 @@ impl<R: Read> SubReader<R> {
             }
         }
 
-        invalid_token()
+        self.invalid_token()
     }
 }
 
@@ -287,6 +298,11 @@ impl<R: Read> TextReader<R> {
         }
     }
 
+    fn invalid_token<T>(&self) -> io::Result<T> {
+        let msg = format!("Invalid token at {}:{}", self.sub.line, self.sub.pos);
+        Err(io::Error::new(io::ErrorKind::InvalidData, msg))
+    }
+
     fn read_vec(&mut self) -> io::Result<Token> {
         let mut xs = Vec::new();
 
@@ -296,13 +312,13 @@ impl<R: Read> TextReader<R> {
                     2 => return Ok(Token::Value(Value::Vec2((xs[0], xs[1])))),
                     3 => return Ok(Token::Value(Value::Vec3((xs[0], xs[1], xs[2])))),
                     4 => return Ok(Token::Value(Value::Vec4((xs[0], xs[1], xs[2], xs[3])))),
-                    _ => return invalid_token()
+                    _ => return self.invalid_token()
                 },
                 SubToken::VecStart if xs.len() == 0 =>
                     return self.read_box2(),
                 SubToken::Double(v) if xs.len() < 4 =>
                     xs.push(v),
-                _ => return invalid_token()
+                _ => return self.invalid_token()
             }
         }
     }
@@ -311,7 +327,7 @@ impl<R: Read> TextReader<R> {
         if let Token::Value(Value::Vec2(v)) = try!(self.read_vec()) {
             Ok(v)
         } else {
-            invalid_token()
+            self.invalid_token()
         }
     }
 
@@ -323,10 +339,10 @@ impl<R: Read> TextReader<R> {
                 match try!(self.sub.read_next()) {
                     SubToken::VecEnd =>
                         Ok(Token::Value(Value::Box2((min, max)))),
-                    _ => invalid_token()
+                    _ => self.invalid_token()
                 }
             },
-            _ => invalid_token()
+            _ => self.invalid_token()
         }
     }
 
@@ -340,9 +356,9 @@ impl<R: Read> TextReader<R> {
                 Token::Value(Value::Vec3(v)) => return self.read_vec3_array(v),
                 Token::Value(Value::Vec4(v)) => return self.read_vec4_array(v),
                 Token::Value(Value::Box2(v)) => return self.read_box2_array(v),
-                _ => invalid_token()
+                _ => self.invalid_token()
             },
-            _ => invalid_token()
+            _ => self.invalid_token()
         }
     }
 
@@ -353,7 +369,7 @@ impl<R: Read> TextReader<R> {
                 SubToken::Bool(v) => values.push(v),
                 SubToken::ArrayEnd =>
                     return Ok(Token::Value(Value::BoolArray(values.into_boxed_slice()))),
-                _ => return invalid_token()
+                _ => return self.invalid_token()
             }
         }
     }
@@ -365,7 +381,7 @@ impl<R: Read> TextReader<R> {
                 SubToken::Int(v) => values.push(v),
                 SubToken::ArrayEnd =>
                     return Ok(Token::Value(Value::IntArray(values.into_boxed_slice()))),
-                _ => return invalid_token()
+                _ => return self.invalid_token()
             }
         }
     }
@@ -377,7 +393,7 @@ impl<R: Read> TextReader<R> {
                 SubToken::Double(v) => values.push(v),
                 SubToken::ArrayEnd =>
                     return Ok(Token::Value(Value::DoubleArray(values.into_boxed_slice()))),
-                _ => return invalid_token()
+                _ => return self.invalid_token()
             }
         }
     }
@@ -390,11 +406,11 @@ impl<R: Read> TextReader<R> {
                     if let Token::Value(Value::Vec2(v)) = try!(self.read_vec()) {
                         values.push(v)
                     } else {
-                        return invalid_token()
+                        return self.invalid_token()
                     },
                 SubToken::ArrayEnd =>
                     return Ok(Token::Value(Value::Vec2Array(values.into_boxed_slice()))),
-                _ => return invalid_token()
+                _ => return self.invalid_token()
             }
         }
     }
@@ -407,11 +423,11 @@ impl<R: Read> TextReader<R> {
                     if let Token::Value(Value::Vec3(v)) = try!(self.read_vec()) {
                         values.push(v)
                     } else {
-                        return invalid_token()
+                        return self.invalid_token()
                     },
                 SubToken::ArrayEnd =>
                     return Ok(Token::Value(Value::Vec3Array(values.into_boxed_slice()))),
-                _ => return invalid_token()
+                _ => return self.invalid_token()
             }
         }
     }
@@ -424,11 +440,11 @@ impl<R: Read> TextReader<R> {
                     if let Token::Value(Value::Vec4(v)) = try!(self.read_vec()) {
                         values.push(v)
                     } else {
-                        return invalid_token()
+                        return self.invalid_token()
                     },
                 SubToken::ArrayEnd =>
                     return Ok(Token::Value(Value::Vec4Array(values.into_boxed_slice()))),
-                _ => return invalid_token()
+                _ => return self.invalid_token()
             }
         }
     }
@@ -441,11 +457,11 @@ impl<R: Read> TextReader<R> {
                     if let Token::Value(Value::Box2(v)) = try!(self.read_vec()) {
                         values.push(v)
                     } else {
-                        return invalid_token()
+                        return self.invalid_token()
                     },
                 SubToken::ArrayEnd =>
                     return Ok(Token::Value(Value::Box2Array(values.into_boxed_slice()))),
-                _ => return invalid_token()
+                _ => return self.invalid_token()
             }
         }
     }
@@ -466,7 +482,7 @@ impl<R: Read> Reader for TextReader<R> {
             SubToken::VecStart => return self.read_vec(),
             SubToken::ArrayStart => return self.read_array(),
             SubToken::VecEnd | SubToken::ArrayEnd =>
-                return invalid_token()
+                return self.invalid_token()
         }
     }
 }
