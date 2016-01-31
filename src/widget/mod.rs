@@ -101,8 +101,8 @@ impl Widget {
 
         try!(writer.write_start());
         if self.border_width > 0 {
-          try!(writer.write_value(&Value::Vec3(self.border_colour)));
           try!(writer.write_value(&Value::Int(self.border_width)));
+          try!(writer.write_value(&Value::Vec3(self.border_colour)));
         }
         try!(writer.write_end());
 
@@ -125,24 +125,68 @@ impl Widget {
         Ok(())
     }
 
-    fn update(&mut self, reader: &mut Reader) -> Result<()> {
-        try!(reader.expect_start());
-        if let Some(location) = try!(reader.expect_vec2_or_end()) {
-            self.location = location;
-            self.size = try!(reader.expect_vec2());
-            self.fill_colour = try!(reader.expect_vec4());
-
-            try!(reader.expect_start());
-            if let Some(border_colour) = try!(reader.expect_vec3_or_end()) {
-                self.border_colour = border_colour;
-                self.border_width = try!(reader.expect_int());
-                try!(reader.skip_to_end());
-            }
-
-            try!(reader.skip_to_end());
+    pub fn update(&mut self, reader: &mut Reader) -> Result<()> {
+        println!("Updating widget");
+        if !try!(reader.expect_start_or_end()) {
+            return Ok(());
         }
 
-        try!(reader.expect_start());
+        try!(self.update_attrs(reader));
+
+        if !try!(reader.expect_start_or_end()) {
+            return Ok(());
+        }
+
+        try!(self.update_bindings(reader));
+
+        if !try!(reader.expect_start_or_end()) {
+            return Ok(());
+        }
+
+        try!(update_children(&mut self.children, reader));
+
+        println!("Widget done");
+        reader.skip_to_end()
+    }
+
+    fn update_attrs(&mut self, reader: &mut Reader) -> Result<()> {
+        if let Some(location) = try!(reader.expect_vec2_or_end()) {
+            self.location = location;
+        } else {
+            return Ok(());
+        }
+
+        if let Some(size) = try!(reader.expect_vec2_or_end()) {
+            self.size = size;
+        } else {
+            return Ok(());
+        }
+
+        if let Some(fill_colour) = try!(reader.expect_vec4_or_end()) {
+            self.fill_colour = fill_colour;
+        } else {
+            return Ok(());
+        }
+
+        if !try!(reader.expect_start_or_end()) {
+            return Ok(());
+        }
+
+        if let Some(border_width) = try!(reader.expect_int_or_end()) {
+            self.border_width = border_width;
+
+            if let Some(border_colour) = try!(reader.expect_vec3_or_end()) {
+                self.border_colour = border_colour;
+                try!(reader.skip_to_end());
+            }
+        } else {
+            self.border_width = 0;
+        }
+
+        reader.skip_to_end()
+    }
+
+    fn update_bindings(&mut self, reader: &mut Reader) -> Result<()> {
         self.bindings.clear();
         while let Some(tag) = try!(reader.expect_tag_or_end()) {
             if let Some(event) = Event::from_tag(tag) {
@@ -153,10 +197,7 @@ impl Widget {
             }
         }
 
-        try!(reader.expect_start());
-        try!(update_children(&mut self.children, reader));
-
-        reader.skip_to_end()
+        Ok(())
     }
 }
 
@@ -177,8 +218,16 @@ impl Group {
     }
 
     fn update(&mut self, reader: &mut Reader) -> Result<()> {
-        self.location = try!(reader.expect_vec2());
-        try!(reader.expect_start());
+        if let Some(location) = try!(reader.expect_vec2_or_end()) {
+            self.location = location;
+        } else {
+            return Ok(());
+        }
+
+        if !try!(reader.expect_start_or_end()) {
+            return Ok(());
+        }
+
         try!(update_children(&mut self.children, reader));
 
         reader.skip_to_end()
@@ -198,10 +247,29 @@ impl Grid {
     }
 
     fn update(&mut self, reader: &mut Reader) -> Result<()> {
-        self.bounds = try!(reader.expect_box2());
-        self.size = try!(reader.expect_vec2());
-        self.offset = try!(reader.expect_vec2());
-        self.colour = try!(reader.expect_vec3());
+        if let Some(bounds) = try!(reader.expect_box2_or_end()) {
+            self.bounds = bounds;
+        } else {
+            return Ok(());
+        }
+
+        if let Some(size) = try!(reader.expect_vec2_or_end()) {
+            self.size = size;
+        } else {
+            return Ok(());
+        }
+
+        if let Some(offset) = try!(reader.expect_vec2_or_end()) {
+            self.offset = offset;
+        } else {
+            return Ok(());
+        }
+
+        if let Some(colour) = try!(reader.expect_vec3_or_end()) {
+            self.colour = colour;
+        } else {
+            return Ok(());
+        }
 
         reader.skip_to_end()
     }
@@ -221,12 +289,23 @@ impl ModelElement {
     }
 
     fn update(&mut self, reader: &mut Reader) -> Result<()> {
-        self.location = try!(reader.expect_vec2());
-        self.scale = try!(reader.expect_double());
-
-        if try!(reader.expect_start_or_end()) {
-            self.model = try!(Model::read_started(reader));
+        if let Some(location) = try!(reader.expect_vec2_or_end()) {
+            self.location = location;
+        } else {
+            return Ok(());
         }
+
+        if let Some(scale) = try!(reader.expect_double_or_end()) {
+            self.scale = scale;
+        } else {
+            return Ok(());
+        }
+
+        if !try!(reader.expect_start_or_end()) {
+            return Ok(());
+        }
+
+        self.model = try!(Model::read_started(reader));
 
         reader.skip_to_end()
     }
@@ -257,10 +336,29 @@ impl Text {
     }
 
     fn update(&mut self, reader: &mut Reader) -> Result<()> {
-        self.location = try!(reader.expect_vec2());
-        self.size = try!(reader.expect_double());
-        self.colour = try!(reader.expect_vec3());
-        self.value = try!(reader.expect_string()).into_string();
+        if let Some(location) = try!(reader.expect_vec2_or_end()) {
+            self.location = location;
+        } else {
+            return Ok(());
+        }
+
+        if let Some(size) = try!(reader.expect_double_or_end()) {
+            self.size = size;
+        } else {
+            return Ok(());
+        }
+
+        if let Some(colour) = try!(reader.expect_vec3_or_end()) {
+            self.colour = colour;
+        } else {
+            return Ok(());
+        }
+
+        if let Some(value) = try!(reader.expect_string_or_end()) {
+            self.value = value.into_string();
+        } else {
+            return Ok(());
+        }
 
         reader.skip_to_end()
     }
@@ -376,6 +474,10 @@ pub fn update_children(children: &mut Vec<Element>, reader: &mut Reader) -> Resu
         }
 
         i += 1;
+    }
+
+    while children.len() > i {
+        children.pop();
     }
 
     Ok(())
