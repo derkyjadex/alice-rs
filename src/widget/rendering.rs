@@ -73,6 +73,10 @@ impl<'a, F: Facade> ElementRenderer<'a, F> {
         self.draw_element(surface, element, (0.0, 0.0));
     }
 
+    pub fn draw_root<S: Surface>(&self, surface: &mut S, widget: &Widget) {
+        self.draw_widget(surface, widget, (0.0, 0.0));
+    }
+
     fn draw_element<S: Surface>(&self, surface: &mut S, element: &Element, origin: Vec2) {
         match element {
             &Element::Widget(ref widget) => self.draw_widget(surface, widget, origin),
