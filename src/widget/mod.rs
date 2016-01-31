@@ -386,9 +386,8 @@ pub fn update_children(children: &mut Vec<Element>, reader: &mut Reader) -> Resu
 mod tests {
     use super::*;
     use super::super::model::{Model, Path, Point};
-    use super::super::data::{BinaryWriter, TextWriter, BinaryReader, Reader};
-    use std::io::{stdout, Cursor, copy};
-    use std::fs::File;
+    use super::super::data::{BinaryWriter, BinaryReader, Reader};
+    use std::io::{Cursor, copy};
 
     fn sample() -> Element {
         Element::Widget(Widget {
