@@ -113,6 +113,7 @@ impl<R: Read> SubReader<R> {
 
                 b't' => return self.read_bool(b"true", true),
                 b'f' => return self.read_bool(b"false", false),
+                b';' => try!(self.read_comment()),
                 _ =>
                     return self.invalid_token()
             }
@@ -284,6 +285,18 @@ impl<R: Read> SubReader<R> {
         }
 
         self.invalid_token()
+    }
+
+    fn read_comment(&mut self) -> io::Result<()> {
+        while let Some(b) = try!(self.next_byte()) {
+            self.consume();
+            match b {
+                b'\n' => break,
+                _ => ()
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -655,6 +668,21 @@ mod tests {
             ((67245.375, 3464.85), (-8769.4565, -1882.52)),
             ((-1882.52, -8769.4565), (3464.85, 67245.375)),
         ].into_boxed_slice())));
+        assert!(is_token(reader.read_next(), Token::EndOfFile));
+    }
+
+    #[test]
+    fn comments() {
+        let mut reader = setup(br"
+            (SHAP ; comment
+             1 ;
+             true) ; all done");
+
+        assert!(is_token(reader.read_next(), Token::Start));
+        assert!(is_value(reader.read_next(), Value::Tag(tag!(S H A P))));
+        assert!(is_value(reader.read_next(), Value::Int(1)));
+        assert!(is_value(reader.read_next(), Value::Bool(true)));
+        assert!(is_token(reader.read_next(), Token::End));
         assert!(is_token(reader.read_next(), Token::EndOfFile));
     }
 }
