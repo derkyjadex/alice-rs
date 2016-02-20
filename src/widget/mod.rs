@@ -20,7 +20,7 @@ pub struct Widget {
     pub border_colour: Vec3,
     pub border_width: i32,
 
-    pub bindings: Vec<(Event, Binding)>,
+    pub bindings: Vec<(EventType, Binding)>,
     pub children: Vec<Element>,
 }
 
@@ -52,13 +52,23 @@ pub struct Text {
     pub value: String,
 }
 
-#[derive(Copy, Clone)]
-pub enum Event {
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub enum EventType {
     Down,
     Up,
     Motion,
     Key,
     Text,
+    KeyboardFocusLost
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Event {
+    Down,
+    Up,
+    Motion(i32, i32),
+    Key(i32),
+    Text(char),
     KeyboardFocusLost
 }
 
@@ -189,7 +199,7 @@ impl Widget {
     fn update_bindings(&mut self, reader: &mut Reader) -> Result<()> {
         self.bindings.clear();
         while let Some(tag) = try!(reader.expect_tag_or_end()) {
-            if let Some(event) = Event::from_tag(tag) {
+            if let Some(event) = EventType::from_tag(tag) {
                 let binding = try!(reader.expect_int());
                 self.bindings.push((event, binding));
             } else {
@@ -198,6 +208,24 @@ impl Widget {
         }
 
         Ok(())
+    }
+
+    pub fn is_in_bounds(&self, (x, y): Vec2) -> bool {
+        return x >= self.location.0
+            && x <= self.location.0 + self.size.0
+            && y >= self.location.1
+            && y <= self.location.1 + self.size.1;
+
+    }
+
+    pub fn find_binding(&self, target_event_type: EventType) -> Option<Binding> {
+        for &(event_type, binding) in &self.bindings {
+            if event_type == target_event_type {
+                return Some(binding);
+            }
+        }
+
+        None
     }
 }
 
@@ -364,27 +392,27 @@ impl Text {
     }
 }
 
-impl Event {
+impl EventType {
     fn write(self, writer: &mut Writer) -> Result<()> {
         let tag = match self {
-            Event::Down => DOWN,
-            Event::Up => UP,
-            Event::Motion => MOTION,
-            Event::Key => KEY,
-            Event::Text => TEXT,
-            Event::KeyboardFocusLost => KEYBOARD_FOCUS_LOST,
+            EventType::Down => DOWN,
+            EventType::Up => UP,
+            EventType::Motion => MOTION,
+            EventType::Key => KEY,
+            EventType::Text => TEXT,
+            EventType::KeyboardFocusLost => KEYBOARD_FOCUS_LOST,
         };
         writer.write_value(&Value::Tag(tag))
     }
 
-    fn from_tag(tag: Tag) -> Option<Event> {
+    fn from_tag(tag: Tag) -> Option<EventType> {
         match tag {
-            DOWN => Some(Event::Down),
-            UP => Some(Event::Up),
-            MOTION => Some(Event::Motion),
-            KEY => Some(Event::Key),
-            TEXT => Some(Event::Text),
-            KEYBOARD_FOCUS_LOST => Some(Event::KeyboardFocusLost),
+            DOWN => Some(EventType::Down),
+            UP => Some(EventType::Up),
+            MOTION => Some(EventType::Motion),
+            KEY => Some(EventType::Key),
+            TEXT => Some(EventType::Text),
+            KEYBOARD_FOCUS_LOST => Some(EventType::KeyboardFocusLost),
             _ => None
         }
     }
@@ -541,8 +569,8 @@ mod tests {
                                     border_colour: (0.0, 0.0, 0.0),
                                     border_width: 1,
                                     bindings: vec![
-                                        (Event::Down, 1004),
-                                        (Event::Up, 1014),
+                                        (EventType::Down, 1004),
+                                        (EventType::Up, 1014),
                                     ],
                                     children: Vec::new()
                                 }),
@@ -553,8 +581,8 @@ mod tests {
                                     border_colour: (0.0, 0.0, 0.0),
                                     border_width: 1,
                                     bindings: vec![
-                                        (Event::Down, 1005),
-                                        (Event::Up, 1005),
+                                        (EventType::Down, 1005),
+                                        (EventType::Up, 1005),
                                     ],
                                     children: Vec::new()
                                 }),
@@ -565,8 +593,8 @@ mod tests {
                                     border_colour: (0.0, 0.0, 0.0),
                                     border_width: 1,
                                     bindings: vec![
-                                        (Event::Down, 1006),
-                                        (Event::Up, 1006),
+                                        (EventType::Down, 1006),
+                                        (EventType::Up, 1006),
                                     ],
                                     children: Vec::new()
                                 }),
@@ -577,8 +605,8 @@ mod tests {
                                     border_colour: (0.0, 0.0, 0.0),
                                     border_width: 1,
                                     bindings: vec![
-                                        (Event::Down, 1007),
-                                        (Event::Up, 1007),
+                                        (EventType::Down, 1007),
+                                        (EventType::Up, 1007),
                                     ],
                                     children: Vec::new()
                                 }),
@@ -600,7 +628,7 @@ mod tests {
                             fill_colour: (0.9, 0.0, 0.0, 1.0),
                             border_colour: (0.0, 0.0, 0.0),
                             border_width: 0,
-                            bindings: vec![(Event::Down, 1001)],
+                            bindings: vec![(EventType::Down, 1001)],
                             children: vec![
                                 Element::Text(Text {
                                     location: (0.0, 0.0),
@@ -616,7 +644,7 @@ mod tests {
                             fill_colour: (0.0, 0.9, 0.0, 1.0),
                             border_colour: (0.0, 0.0, 0.0),
                             border_width: 0,
-                            bindings: vec![(Event::Down, 1002)],
+                            bindings: vec![(EventType::Down, 1002)],
                             children: vec![
                                 Element::Text(Text {
                                     location: (0.0, 0.0),
@@ -632,7 +660,7 @@ mod tests {
                             fill_colour: (0.0, 0.0, 0.9, 1.0),
                             border_colour: (0.0, 0.0, 0.0),
                             border_width: 0,
-                            bindings: vec![(Event::Down, 1003)],
+                            bindings: vec![(EventType::Down, 1003)],
                             children: vec![
                                 Element::Text(Text {
                                     location: (0.0, 0.0),

@@ -311,6 +311,10 @@ impl<R: Read> TextReader<R> {
         }
     }
 
+    pub fn into_inner(self) -> R {
+        self.sub.input
+    }
+
     fn invalid_token<T>(&self) -> io::Result<T> {
         let msg = format!("Invalid token at {}:{}", self.sub.line, self.sub.pos);
         Err(io::Error::new(io::ErrorKind::InvalidData, msg))
