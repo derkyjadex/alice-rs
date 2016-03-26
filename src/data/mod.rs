@@ -36,8 +36,6 @@ pub mod writer;
 mod binary_writer;
 mod text_writer;
 
-mod utils;
-
 pub use self::reader::{Token, Reader};
 pub use self::binary_reader::BinaryReader;
 pub use self::text_reader::TextReader;

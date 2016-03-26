@@ -1,7 +1,6 @@
 use std::io::{self, Write};
 use byteorder::{LittleEndian, BigEndian, WriteBytesExt};
 use super::{Value, Tag, Vec2, Vec3, Vec4, Box2, Writer};
-use data::utils::{map_to_io};
 
 pub struct BinaryWriter<W> {
     output: W
@@ -41,7 +40,6 @@ impl<W: Write> BinaryWriter<W> {
 
     fn write_tag(&mut self, value: Tag) -> io::Result<()> {
         self.output.write_u32::<BigEndian>(value)
-            .map_err(map_to_io)
     }
 
     fn write_bool(&mut self, value: bool) -> io::Result<()> {
@@ -86,7 +84,6 @@ impl<W: Write> BinaryWriter<W> {
 
     fn write_double(&mut self, value: f64) -> io::Result<()> {
         self.output.write_f64::<LittleEndian>(value)
-            .map_err(map_to_io)
     }
 
     fn write_vec2(&mut self, value: Vec2) -> io::Result<()> {

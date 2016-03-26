@@ -2,8 +2,6 @@ use std::io::{self, Read};
 use byteorder::{LittleEndian, BigEndian, ReadBytesExt};
 use super::{Value, Tag, Vec2, Vec3, Vec4, Box2, Token, Reader};
 
-use data::utils::{map_to_io};
-
 pub struct BinaryReader<R> {
     input: R
 }
@@ -59,7 +57,6 @@ impl<R: Read> BinaryReader<R> {
 
     fn read_tag(&mut self) -> io::Result<Tag> {
         self.input.read_u32::<BigEndian>()
-            .map_err(map_to_io)
     }
 
     fn read_bool(&mut self) -> io::Result<bool> {
@@ -115,7 +112,6 @@ impl<R: Read> BinaryReader<R> {
 
     fn read_double(&mut self) -> io::Result<f64> {
         self.input.read_f64::<LittleEndian>()
-            .map_err(map_to_io)
     }
 
     fn read_vec2(&mut self) -> io::Result<Vec2> {
